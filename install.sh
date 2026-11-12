@@ -182,7 +182,7 @@ fi
 detect_browsers
 select_browsers "$MODE" "$REQUESTED_BROWSER"
 
-PY_ARGS=("$CONFIG_DIR" "$OPENCODE_DIR" "$(command -v npx)" "$SCRIPT_DIR/firefox-highlight.js")
+PY_ARGS=("$CONFIG_DIR" "$OPENCODE_DIR" "$(command -v npx)")
 for id in "${SELECTED_BROWSERS[@]}"; do
   PY_ARGS+=("${id}=${BROWSER_PATHS[$id]}")
 done
@@ -200,7 +200,6 @@ from pathlib import Path
 config_dir = Path(sys.argv[1]).expanduser()
 opencode_dir = Path(sys.argv[2]).expanduser()
 npx_path = sys.argv[3]
-script_source = Path(sys.argv[4]).expanduser()
 selected = []
 
 browser_definitions = {
@@ -211,7 +210,7 @@ browser_definitions = {
     "chromium": {"label": "Chromium", "engine": "chromium"},
 }
 
-for item in sys.argv[5:]:
+for item in sys.argv[4:]:
     if "=" not in item:
         raise SystemExit(f"Argumento interno no válido: {item!r}")
     browser_id, executable = item.split("=", 1)
@@ -300,12 +299,6 @@ def strip_jsonc(source: str) -> str:
 opencode_dir.mkdir(parents=True, exist_ok=True)
 config_dir.mkdir(parents=True, exist_ok=True)
 
-# Copy the click-highlight script next to the generated configs so that every
-# installed browser can reference it with a relative "initScript" path.
-if not script_source.is_file():
-    raise SystemExit(f"No se encontró el script de resaltado: {script_source}")
-shutil.copy2(script_source, config_dir / "firefox-highlight.js")
-
 # Prefer the JSON file if it exists; otherwise support an existing JSONC file.
 json_path = opencode_dir / "opencode.json"
 jsonc_path = opencode_dir / "opencode.jsonc"
@@ -353,8 +346,6 @@ for browser_id, executable in selected:
         "browser": {
             "browserName": definition["engine"],
             "launchOptions": {"headless": False},
-            # Cuadro de luz rojo alrededor de cada click/campo (firefox-highlight.js).
-            "initScript": ["firefox-highlight.js"],
         }
     }
 

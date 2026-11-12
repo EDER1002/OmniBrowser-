@@ -1,7 +1,6 @@
 {
   "browser": {
     "browserName": "chromium",
-    "cdpEndpoint": "http://127.0.0.1:9222",
-    "initScript": ["../firefox-highlight.js"]
+    "cdpEndpoint": "http://127.0.0.1:9222"
   }
 }
