@@ -1,5 +1,9 @@
 # OpenCode Firefox MCP Automation
 
+<p align="center">
+  <img src="logo.png" alt="OpenCode Firefox MCP Logo" width="200" height="200">
+</p>
+
 Este repositorio contiene la configuración y scripts necesarios para habilitar el control autónomo de navegadores mediante Mozilla Firefox en un entorno Linux, utilizando el Model Context Protocol (MCP) de OpenCode.
 
 ## Estructura del repositorio
