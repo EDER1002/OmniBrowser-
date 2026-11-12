@@ -1,148 +1,239 @@
-# OmniBrowser - Automatización de navegadores MCP para OpenCode y Claude
+# OmniBrowser
 
 <p align="center">
-  <img src="logo.png" alt="OmniBrowser Logo" width="200">
+  <img src="logo.png" alt="OmniBrowser logo" width="180">
 </p>
 
-OmniBrowser configura **Playwright MCP** para que tus agentes de IA (OpenCode, Claude Desktop o Claude Code) controlen tu navegador: abrir páginas, leer contenido, hacer clic y rellenar formularios.
+<p align="center">
+  <b>Browser automation (MCP) for OpenCode and Claude — with a visible AI ghost cursor.</b>
+</p>
 
-Además incluye un **cursor fantasma morado**: un puntero visual dentro del navegador que la IA mueve para que puedas ver en tiempo real dónde está apuntando, sin confundirse con tu cursor físico.
+<p align="center">
+  <a href="#-what-you-need-to-download">Downloads</a> •
+  <a href="#-installation--linux">Linux</a> •
+  <a href="#-installation--windows">Windows</a> •
+  <a href="#-connect-opencode">OpenCode</a> •
+  <a href="#-connect-claude">Claude</a> •
+  <a href="README.es.md">Español</a>
+</p>
 
-- **Multi-navegador:** Firefox, Brave, Opera, Google Chrome y Chromium.
-- **Multiplataforma:** Linux (`install.sh`) y Windows (`install.ps1`).
-- **Multi-cliente:** OpenCode, Claude Desktop y Claude Code.
-- **Configuración segura:** respaldo automático antes de modificar cualquier archivo y conservación de los servidores que no son de OmniBrowser.
+OmniBrowser wires [Playwright MCP](https://github.com/microsoft/playwright-mcp) into your AI coding agent so it can open pages, read content, click, fill forms and scroll — while you **watch every move** through a purple ghost cursor that floats inside the browser.
 
 ---
 
-## ✨ Cursor fantasma morado (AI Pointer)
+## 📑 Table of contents
 
-Cada configuración generada incluye `initScript: ["ghost-cursor.js"]`. El script se inyecta en todas las páginas **antes** que cualquier otro script y crea un puntero SVG morado:
+1. [What is OmniBrowser?](#-what-is-omnibrowser)
+2. [Key features](#-key-features)
+3. [The AI ghost cursor](#-the-ai-ghost-cursor)
+   - [Appearance](#appearance)
+   - [Behaviour: move, click, scroll](#behaviour-move-click-scroll)
+   - [How it is injected](#how-it-is-injected)
+   - [JavaScript API](#javascript-api)
+   - [How the agent drives it](#how-the-agent-drives-it)
+4. [What you need to download](#-what-you-need-to-download)
+   - [Linux requirements](#linux-requirements)
+   - [Windows requirements](#windows-requirements)
+   - [Optional: the AI client](#optional-the-ai-client)
+5. [Installation](#-installation)
+   - [Linux](#install-on-linux)
+   - [Windows](#install-on-windows)
+   - [What the installers actually do](#what-the-installers-actually-do)
+6. [Connect OpenCode](#-connect-opencode)
+7. [Connect Claude](#-connect-claude)
+8. [Repository layout](#-repository-layout)
+9. [Browser support](#-browser-support)
+10. [Firefox vs Chromium and CDP](#-firefox-vs-chromium-and-cdp)
+11. [Troubleshooting](#-troubleshooting)
+12. [License](#-license)
 
-- **SVG embebido en el código** (no depende de archivos de imagen externos).
-- **Color:** `#9D00FF` con fondo transparente.
-- **Orientación:** punta hacia la **izquierda**, inversa a la inclinación tradicional.
-- **Comportamiento CSS:**
+---
+
+## 💡 What is OmniBrowser?
+
+OmniBrowser is a **configuration pack** for [Model Context Protocol](https://modelcontextprotocol.io) browser servers. It gives an AI agent (OpenCode, Claude Desktop or Claude Code) full control of a real browser — and adds one thing generic setups don't have: **a purple ghost cursor that shows you exactly where the AI is pointing, clicking and scrolling.**
+
+It is not a browser and it does not replace one. It is a set of:
+
+- **browser configuration files** for Firefox, Brave, Opera, Google Chrome and Chromium;
+- **two installers** — `install.sh` (Linux) and `install.ps1` (Windows) — that detect your browsers, generate the configs and register the MCP servers in your client;
+- **one injection script**, `ghost-cursor.js`, that draws the AI pointer inside every page;
+- **this documentation**.
+
+---
+
+## ✨ Key features
+
+| | |
+| --- | --- |
+| 🖱️ **Visible AI pointer** | A purple ghost cursor shows the agent's real-time position. You always know where it is looking. |
+| 🖐️ **Never blocks you** | `pointer-events: none` — the cursor never intercepts your own clicks. |
+| 🔥 **Never hides** | `z-index: 2147483647` puts it above modals, menus and sticky headers. |
+| 🎯 **Reacts to the agent** | It moves, pulses when the agent clicks and follows the page when it scrolls. |
+| 🦊 **Five browsers** | Firefox, Brave, Opera, Google Chrome and Chromium. |
+| 🐧 **Two platforms** | Linux (`install.sh`) and Windows (`install.ps1`). |
+| 🤖 **Three clients** | OpenCode, Claude Desktop and Claude Code. |
+| 🔒 **Safe by default** | Every config file is backed up before it is touched, and your other MCP servers are preserved. |
+
+---
+
+## 👻 The AI ghost cursor
+
+### Appearance
+
+The cursor is a **minimalist triangle pointing left**, drawn with an inline SVG (no external image files):
+
+- **Shape:** acute tip on the left, flat vertical base on the right, rounded corners, no tail, no extra strokes.
+- **Colour:** vibrant purple `#9D00FF`, fully transparent background.
+- **Size:** 28 × 28 px, with a soft purple glow so it stays visible on light pages.
+
+The path is written by hand in `ghost-cursor.js`:
+
+```js
+'M20.4 3.2Q21.5 2.4 21.5 3.7L21.5 20.3Q21.5 21.6 20.4 20.8L4.2 13.2Q2.9 12 4.2 10.8Z'
+```
+
+Its CSS is applied directly to the SVG element:
 
 ```css
 position: fixed;
-z-index: 999999;
+z-index: 2147483647;
 pointer-events: none;
-transition: top 0.1s ease-out, left 0.1s ease-out;
+transition: top 0.12s ease-out, left 0.12s ease-out, transform 0.1s ease;
 ```
 
-`pointer-events: none` es vital: el cursor **nunca secuestra ni bloquea tus clics físicos**. Es un elemento puramente visual.
+- `position: fixed` keeps it anchored to the viewport, not to the document.
+- `z-index: 2147483647` is the maximum integer value — it floats above every modal.
+- `pointer-events: none` guarantees it can never swallow your clicks.
+- The `transition` makes every movement smooth instead of teleporting.
 
-### Cómo se mueve (backend → frontend)
+### Behaviour: move, click, scroll
 
-No hay servidor web ni puertos abiertos: la comunicación ocurre por la propia herramienta de evaluación del MCP.
+| Action | What the cursor does |
+| --- | --- |
+| **Move** | The agent computes a point `(x, y)` and the cursor animates there; the **tip** lands exactly on that point. |
+| **Element** | If the agent points at an element, the cursor centres on it. If the element is off-screen it is first scrolled into view, so you see the page travel. |
+| **Click** | A click near the pointer triggers a quick **pulse** (`scale(0.85)` and back). Your own clicks, far from the pointer, trigger nothing. |
+| **Scroll** | When the page scrolls, the pointer travels with the content (same delta), so you can see the agent going down the page. When an inner panel scrolls, the pointer moves towards that panel. |
+| **Focus** | If the focused element is close to the pointer, the pointer follows it. |
+| **Always visible** | The cursor is on screen from the first frame of every page and is never parked outside the viewport. |
 
-1. **Backend (agente):** decide unas coordenadas `(x, y)` o un elemento de la página.
-2. **Transporte:** llama a `browser_evaluate` con esas coordenadas.
-3. **Frontend (página):** `ghost-cursor.js` expone `window.__omnibrowserCursor(x, y)`, que actualiza las propiedades `left` y `top`; la transición CSS suaviza el desplazamiento.
+### How it is injected
+
+The generated browser configs contain:
+
+```json
+{
+  "browser": {
+    "browserName": "firefox",
+    "launchOptions": { "headless": false },
+    "initScript": ["ghost-cursor.js"]
+  }
+}
+```
+
+`initScript` is Playwright MCP's equivalent of CDP's **`Page.addScriptToEvaluateOnNewDocument`**: the script is injected *before* any page script runs, and therefore **automatically re-injected on every navigation and reload**. There is nothing to re-run and nothing to install per page.
+
+`ghost-cursor.js` lives next to the config file, and `initScript` paths are resolved relative to the config file's directory.
+
+### JavaScript API
+
+The script exposes one global function:
 
 ```js
-// Mover a coordenadas exactas de viewport
+window.__omnibrowserCursor(x, y);        // move to viewport coordinates
+window.__omnibrowserCursor(element);     // centre on an element (scrolls it into view)
+window.__omnibrowserCursor({ x, y });     // same as (x, y)
+
+window.__omnibrowserCursor.pulse();       // click pulse: scale 0.85 and back
+window.__omnibrowserCursor.click(el);     // move to an element + pulse
+window.__omnibrowserCursor.scrollTo(y);   // scroll the page (the pointer follows)
+window.__omnibrowserCursor.hide();        // hide the pointer
+window.__omnibrowserCursor.show();        // show it again
+window.__omnibrowserCursor.position();    // -> { x, y } current position
+window.__omnibrowserCursor.isVisible();   // -> boolean
+```
+
+### How the agent drives it
+
+No web server, no ports, no websockets: the transport is the MCP evaluation tool itself.
+
+```js
+// 1. move to exact coordinates
 () => window.__omnibrowserCursor(320, 180)
 
-// Mover al centro de un elemento (por referencia del snapshot)
+// 2. point at an element from the page snapshot
 (el) => window.__omnibrowserCursor(el)
 
-// Ocultar el cursor
+// 3. mark a click
+() => window.__omnibrowserCursor.pulse()
+
+// 4. hide / show
 () => window.__omnibrowserCursor.hide()
 ```
 
-Para desactivarlo, elimina la clave `initScript` de la configuración generada; solo después (opcional) puedes borrar `ghost-cursor.js`. **No borres el archivo sin antes quitar `initScript`**: Playwright fallaría al crear el contexto de navegación y dejarían de funcionar todas las herramientas del navegador, no solo el cursor.
-
 ---
 
-## 🚀 Características
+## 📥 What you need to download
 
-- **Soporte multi-navegador:** Firefox, Brave, Opera, Google Chrome y Chromium.
-- **Gecko y Chromium:** usa el motor Firefox de Playwright para Firefox y el motor Chromium con el ejecutable del sistema para el resto.
-- **Multiplataforma:** instaladores equivalentes para Linux y Windows, con detección de rutas estándar en cada sistema.
-- **Multi-cliente:** registra los servidores en OpenCode y/o en Claude (Desktop y Code) sin conflictos entre ellos.
-- **Cursor fantasma morado** controlado por la IA (ver sección anterior).
-- **Instalación interactiva:** si encuentra varios navegadores, permite escoger uno desde la terminal.
-- **Modo múltiple:** `--all` registra todos los navegadores detectados.
-- **Configuración segura:** crea una copia de respaldo con fecha antes de modificar `opencode.json` o `claude_desktop_config.json`, y conserva los demás servidores MCP.
+OmniBrowser itself is just configuration files. These are the only things you must have on your machine.
 
----
+### Linux requirements
 
-## 📂 Estructura del repositorio
+| Requirement | Why | How to get it |
+| --- | --- | --- |
+| **Node.js 20+** (provides `npx`) | Playwright MCP is an npm package launched through `npx` | [nodejs.org/en/download](https://nodejs.org/en/download) · or `sudo pacman -S nodejs npm` (Arch) · `sudo apt install nodejs npm` (Debian/Ubuntu) |
+| **Bash 4+** and **Python 3** | `install.sh` is a Bash script that uses Python 3 for JSON merging | Already installed on most distros: `sudo pacman -S --needed bash python` · `sudo apt install bash python3` |
+| **A graphical session** | The browser opens visibly so you can watch the ghost cursor | You are already on a desktop environment |
+| **One browser** | The automation target | See the links below |
 
-```text
-OmniBrowser/
-├── configs/
-│   ├── windows/                       # Plantillas con rutas de Windows
-│   │   ├── mcp-chrome-config.json
-│   │   ├── mcp-brave-config.json
-│   │   ├── mcp-opera-config.json
-│   │   └── mcp-chromium-config.json
-│   ├── mcp-firefox-config.json        # Plantillas con rutas de Linux
-│   ├── mcp-brave-config.json
-│   ├── mcp-opera-config.json
-│   ├── mcp-chrome-config.json
-│   ├── mcp-chromium-config.json
-│   └── mcp-chromium-cdp.example.json
-├── ghost-cursor.js                    # Cursor fantasma morado de la IA
-├── install.sh                         # Instalador para Linux
-├── install.ps1                        # Instalador para Windows
-├── mcp-firefox-config.json            # Plantilla de referencia (raíz)
-├── opencode.example.json              # Ejemplo de registro en OpenCode
-├── claude.example.json                # Ejemplo de registro en Claude
-├── logo.png
-├── LICENSE
-└── README.md
-```
+> ⚠️ On Debian/Ubuntu the packaged `nodejs` is often **older than Node 20**. If the installer complains about the Node version, install a current release with [NodeSource](https://github.com/nodesource/distributions) or `nvm install --lts`.
 
-Los instaladores generan las configuraciones definitivas en:
+**Supported browsers and where to download them**
 
-| Cliente | Directorio |
+| Browser | Download | Engine used by OmniBrowser |
+| --- | --- | --- |
+| Mozilla Firefox | [mozilla.org/firefox/new](https://www.mozilla.org/firefox/new/) | Firefox (Playwright build) |
+| Google Chrome | [google.com/chrome](https://www.google.com/chrome/) | Chromium (your install) |
+| Brave | [brave.com/download](https://brave.com/download/) | Chromium (your install) |
+| Opera | [opera.com/download](https://www.opera.com/download) | Chromium (your install) |
+| Chromium | [chromium.org](https://www.chromium.org/getting-involved/download-chromium/) | Chromium (your install) |
+
+### Windows requirements
+
+| Requirement | Why | How to get it |
+| --- | --- | --- |
+| **Node.js 20+** (provides `npx`) | Playwright MCP is an npm package launched through `npx` | [nodejs.org/en/download](https://nodejs.org/en/download) · or `winget install OpenJS.NodeJS.LTS` |
+| **PowerShell 7** (`pwsh`) | `install.ps1` requires it (Windows PowerShell 5.1 is rejected) | `winget install Microsoft.PowerShell` · [learn.microsoft.com](https://learn.microsoft.com/powershell/scripting/install/installing-powershell) |
+| **One browser** | The automation target | See the links in the Linux table above |
+
+**Where `install.ps1` looks for your browsers**
+
+| Browser | Paths checked |
 | --- | --- |
-| OpenCode | `${XDG_CONFIG_HOME:-~/.config}/opencode/omnibrowser/` en Linux · `~/.config/opencode/omnibrowser/` en Windows |
-| Claude Desktop | `%APPDATA%\Claude\` (Windows) · `~/.config/Claude/` (Linux, si existe) |
-
-En cada archivo Chromium colocan la ruta real del ejecutable detectado. Las carpetas `configs/` y `configs/windows/` son **ejemplos de referencia**; no las copies tal cual a tu directorio de configuración (las rutas relativas de `initScript` dejarían de resolver): ejecuta el instalador, que genera las configuraciones definitivas con `ghost-cursor.js` junto a ellas.
-
----
-
-## 🧰 Requisitos
-
-### Linux
-
-- Linux con entorno gráfico activo (probado a nivel de diseño para Arch Linux; puede funcionar en otras distribuciones). Playwright MCP abre el navegador en modo visible por defecto.
-- Bash 4 o superior, Python 3, Node.js 20 o superior con `npx`.
-- Al menos uno de los navegadores soportados disponible en `PATH`.
-
-```bash
-sudo pacman -S --needed bash python nodejs npm     # Arch
-sudo apt install bash python3 nodejs npm           # Debian/Ubuntu
-```
-
-> Ojo con Debian/Ubuntu: el `nodejs` de los repositorios suele ser **inferior a Node 20**. Si el instalador se queja de la versión de Node, instala una versión reciente con [NodeSource](https://github.com/nodesource/distributions) o `nvm install --lts`.
-
-### Windows
-
-- Windows 10 o superior con **PowerShell 7 o superior** (`winget install Microsoft.PowerShell`). El instalador lo comprueba y te avisa si solo tienes Windows PowerShell 5.1.
-- Node.js 20 o superior (`winget install OpenJS.NodeJS.LTS`).
-- Al menos uno de los navegadores soportados.
-
-Rutas estándar que detecta `install.ps1`:
-
-| Navegador | Rutas comprobadas |
-| --- | --- |
-| Firefox | `%ProgramFiles%\Mozilla Firefox\firefox.exe`, `%ProgramFiles(x86)%\...` |
-| Chrome | `%ProgramFiles%\Google\Chrome\Application\chrome.exe`, `%ProgramFiles(x86)%\...`, `%LOCALAPPDATA%\...` |
-| Brave | `%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe`, `%ProgramFiles%\...` |
+| Firefox | `%ProgramFiles%\Mozilla Firefox\firefox.exe`, `%ProgramFiles(x86)\Mozilla Firefox\firefox.exe` |
+| Chrome | `%ProgramFiles%\Google\Chrome\Application\chrome.exe`, `%ProgramFiles(x86)\...`, `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe` |
+| Brave | `%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe`, `%ProgramFiles%\BraveSoftware\...` |
 | Opera | `%LOCALAPPDATA%\Programs\Opera\opera.exe`, `%LOCALAPPDATA%\Programs\Opera GX\opera.exe`, `%ProgramFiles%\Opera\opera.exe` |
-| Chromium | `%LOCALAPPDATA%\Chromium\Application\chrome.exe`, `%ProgramFiles%\...` |
+| Chromium | `%LOCALAPPDATA%\Chromium\Application\chrome.exe`, `%ProgramFiles%\Chromium\Application\chrome.exe` |
 
-Si el navegador no está en esas rutas, añádelo a `PATH` y el instalador lo encontrará igualmente.
+If your browser lives somewhere else, add its folder to `PATH` and the installer will still find it.
+
+### Optional: the AI client
+
+OmniBrowser works with any MCP-capable client. These are the ones documented here:
+
+| Client | Install | Docs |
+| --- | --- | --- |
+| **OpenCode** | `curl -fsSL https://opencode.ai/v2/install \| bash` · `npm install -g @opencode/cli` · `paru -S opencode-beta` | [opencode.ai/docs](https://opencode.ai/docs/) |
+| **Claude Code** | `curl -fsSL https://claude.ai/install.sh \| bash` (Linux/macOS) · `irm https://claude.ai/install.ps1 \| iex` (Windows) · `winget install Anthropic.ClaudeCode` | [code.claude.com/docs](https://code.claude.com/docs/en/overview) |
+| **Claude Desktop** | [claude.com/download](https://claude.com/download) (Windows/macOS app) | [code.claude.com/docs/en/desktop](https://code.claude.com/docs/en/desktop-quickstart) |
 
 ---
 
-## 🛠️ Instalación en Linux
+## 🛠️ Installation
+
+### Install on Linux
 
 ```bash
 git clone https://github.com/EDER1002/OmniBrowser-.git
@@ -151,18 +242,18 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Si encuentra un solo navegador lo configura automáticamente; si encuentra varios, muestra un menú para elegir.
+If a single browser is found it is configured automatically; if several are found you get an interactive menu.
 
 ```bash
-./install.sh --all             # Todos los navegadores detectados
-./install.sh --browser brave   # Solo Brave
-./install.sh --claude          # Además, registra en Claude
-./install.sh --help            # Ayuda
+./install.sh --all             # register every detected browser
+./install.sh --browser brave   # register only Brave
+./install.sh --claude          # also register the servers in Claude
+./install.sh --help            # full help
 ```
 
-## 🪟 Instalación en Windows
+### Install on Windows
 
-Abre una terminal **PowerShell 7** (`pwsh`) en la carpeta del repositorio y ejecuta:
+Open **PowerShell 7** (`pwsh`) in the repository folder:
 
 ```powershell
 git clone https://github.com/EDER1002/OmniBrowser-.git
@@ -170,24 +261,38 @@ cd OmniBrowser-
 pwsh -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-> `-ExecutionPolicy Bypass` solo afecta a esta ejecución; es necesario porque Windows bloquea por defecto la ejecución de scripts de PowerShell. Si `pwsh` no se reconoce, instala PowerShell 7 con `winget install Microsoft.PowerShell`.
+> `-ExecutionPolicy Bypass` only affects this single execution. Windows blocks PowerShell scripts by default; this flag lets the installer run once.
 
-Mismas opciones que en Linux, en forma de parámetros:
+Same options as Linux, as parameters:
 
 ```powershell
-.\install.ps1 -All                # Todos los navegadores detectados
-.\install.ps1 -Browser brave      # Solo Brave
-.\install.ps1 -Claude             # Además, registra en Claude Desktop / Code
-.\install.ps1 -Help               # Ayuda
+.\install.ps1 -All                # register every detected browser
+.\install.ps1 -Browser brave      # register only Brave
+.\install.ps1 -Claude             # also register in Claude Desktop / Claude Code
+.\install.ps1 -Help               # full help
 ```
+
+### What the installers actually do
+
+1. **Detect** which supported browsers are installed (and their exact executable path).
+2. **Create** `~/.config/opencode/omnibrowser/` and copy `ghost-cursor.js` into it.
+3. **Write** one config per browser, e.g. `mcp-firefox-config.json`, each containing the `initScript` that injects the ghost cursor.
+4. **Register** the servers in your client's configuration, replacing only OmniBrowser's own entries (`omnibrowser-*` and the legacy `firefox-playwright`) and leaving every other MCP server untouched.
+5. **Back up** any file it modifies as `config.json.bak-<timestamp>` before writing.
+
+| Client | Configuration file |
+| --- | --- |
+| OpenCode | `~/.config/opencode/opencode.json` (Linux, macOS and Windows) — `${XDG_CONFIG_HOME:-~/.config}/opencode/opencode.json` on Linux if you set `XDG_CONFIG_HOME` |
+| Claude Desktop | Windows: `%APPDATA%\Claude\claude_desktop_config.json` · macOS: `~/Library/Application Support/Claude/claude_desktop_config.json` · Linux: `~/.config/Claude/claude_desktop_config.json` (only if it already exists) |
+| Claude Code | `claude mcp add ...` (user scope) or a project `.mcp.json` file |
 
 ---
 
-## 🔌 Integración con OpenCode
+## 🔌 Connect OpenCode
 
-OpenCode guarda su configuración global en `~/.config/opencode/opencode.json(c)` en **todos los sistemas operativos** (en Linux, `install.sh` respeta `XDG_CONFIG_HOME` si lo tienes definido).
+OpenCode stores its global configuration in `~/.config/opencode/opencode.json(c)` on **every** operating system.
 
-Los servidores locales van dentro de `mcp.servers` y usan **un único arreglo `command`** con todos los argumentos (`-y`, paquete MCP y `--config`). No existe una propiedad separada `args` en OpenCode.
+Local MCP servers live under `mcp.servers` and take **a single `command` array** containing every argument. OpenCode has no separate `args` property.
 
 ```json
 {
@@ -201,7 +306,7 @@ Los servidores locales van dentro de `mcp.servers` y usan **un único arreglo `c
           "-y",
           "@playwright/mcp@latest",
           "--config",
-          "/home/usuario/.config/opencode/omnibrowser/mcp-firefox-config.json"
+          "/home/user/.config/opencode/omnibrowser/mcp-firefox-config.json"
         ],
         "timeout": { "startup": 60000, "catalog": 30000 }
       }
@@ -210,15 +315,15 @@ Los servidores locales van dentro de `mcp.servers` y usan **un único arreglo `c
 }
 ```
 
-`opencode.example.json` muestra las cinco entradas posibles deshabilitadas. Los instaladores crean las entradas de los navegadores que elijas y reemplazan únicamente las administradas por OmniBrowser (`omnibrowser-*`) y la entrada legada `firefox-playwright`, conservando el resto de tus servidores MCP.
+`opencode.example.json` contains all five possible entries, disabled by default.
 
-Al terminar, **reinicia OpenCode** y comprueba la conexión con `/mcps`.
+**Finish:** restart OpenCode and run `/mcps` to check that the server shows up as connected.
 
 ---
 
-## 🤖 Integración con Claude
+## 🤖 Connect Claude
 
-Claude usa el formato `mcpServers`, distinto al de OpenCode: `command` es un **string** y los argumentos van en `args`.
+Claude uses a different structure: `mcpServers`, with `command` as a **string** and the arguments in `args`.
 
 ```json
 {
@@ -238,46 +343,84 @@ Claude usa el formato `mcpServers`, distinto al de OpenCode: `command` es un **s
 
 ### Claude Desktop
 
-| Sistema | Archivo de configuración |
-| --- | --- |
-| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
-| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Linux | `~/.config/Claude/claude_desktop_config.json` (solo si tienes alguna versión instalada) |
+- **Windows:** `.\install.ps1 -Claude` creates or merges `%APPDATA%\Claude\claude_desktop_config.json` for you (with a backup).
+- **Linux:** `./install.sh --claude` merges the file **only if it already exists**; otherwise it prints ready-to-paste Claude Code commands instead.
+- **macOS:** merge `claude.example.json` into `~/Library/Application Support/Claude/claude_desktop_config.json` and replace `/ABSOLUTE/PATH/TO/` with your real path.
 
-- En **Windows**: `.\install.ps1 -Claude` crea o fusiona el archivo automáticamente (con respaldo).
-- En **Linux**: `./install.sh --claude` fusiona **solo si el archivo ya existe**; si no, imprime los comandos de Claude Code en su lugar.
+Restart Claude Desktop afterwards; the MCP servers appear under the tools icon.
 
-`claude.example.json` contiene las cinco entradas con rutas absolutas de ejemplo: reemplaza `/ABSOLUTE/PATH/TO/` por la ruta real de tu directorio `omnibrowser/` y pega el contenido en tu archivo de configuración.
+> On Windows Claude Desktop sometimes cannot resolve `npx`. Replace `"command": "npx"` with `"command": "cmd"` and add `"/c", "npx"` at the beginning of `args`.
 
 ### Claude Code
 
-Registra cada servidor con la CLI (una línea por navegador):
+Register each server from the CLI (one line per browser):
 
 ```bash
 claude mcp add omnibrowser-firefox -- npx -y @playwright/mcp@latest --config "$HOME/.config/opencode/omnibrowser/mcp-firefox-config.json"
 ```
 
-Si usas `XDG_CONFIG_HOME`, ajusta la ruta: el instalador imprime el comando exacto para tu sistema.
-
-Ambos instaladores imprimen estos comandos cuando se les pasa `--claude` / `-Claude`. También puedes copiar `claude.example.json` como `.mcp.json` en la raíz de un proyecto: Claude Code lo lee con la misma estructura `mcpServers`.
+Both installers print these exact commands when you pass `--claude` / `-Claude`. You can also copy `claude.example.json` to a project as `.mcp.json` — Claude Code reads the same `mcpServers` structure.
 
 ---
 
-## ⚙️ Firefox vs. Chromium: puertos y depuración remota
+## 📂 Repository layout
 
-Hay dos formas de trabajar, y no deben confundirse:
+```text
+OmniBrowser/
+├── configs/                       # Reference templates (Linux paths)
+│   ├── windows/                   # Reference templates (Windows paths)
+│   │   ├── mcp-chrome-config.json
+│   │   ├── mcp-brave-config.json
+│   │   ├── mcp-opera-config.json
+│   │   └── mcp-chromium-config.json
+│   ├── mcp-firefox-config.json
+│   ├── mcp-brave-config.json
+│   ├── mcp-opera-config.json
+│   ├── mcp-chrome-config.json
+│   ├── mcp-chromium-config.json
+│   └── mcp-chromium-cdp.example.json
+├── ghost-cursor.js                # The AI ghost cursor (inline SVG + behaviour)
+├── install.sh                     # Installer for Linux
+├── install.ps1                    # Installer for Windows (PowerShell 7)
+├── mcp-firefox-config.json        # Reference config in the repository root
+├── opencode.example.json          # OpenCode registration example
+├── claude.example.json            # Claude Desktop / Claude Code example
+├── logo.png
+├── LICENSE
+└── README.md
+```
 
-### 1. Playwright inicia el navegador (modo predeterminado)
+> The files in `configs/` are **reference examples**. Do not copy them into your configuration directory as-is (their relative `initScript` paths would stop resolving); run the installer, which writes the definitive configs with `ghost-cursor.js` next to them.
 
-Es el modo configurado por los instaladores.
+---
 
-- **Firefox:** se configura con `browserName: "firefox"`. Playwright descarga y usa su propia compilación de Firefox compatible con su protocolo de automatización; no intenta conectarse a la instalación normal de Firefox del sistema.
-- **Brave, Opera, Chrome y Chromium:** se configuran con `browserName: "chromium"` y `launchOptions.executablePath` apuntando al ejecutable detectado.
-- **No hace falta fijar `--remote-debugging-port=9222`** en este modo. Playwright inicia y administra el navegador directamente.
+## 🌐 Browser support
 
-### 2. Conectarse a un Chromium que ya está abierto (CDP opcional)
+| Browser | Engine | Executable | Notes |
+| --- | --- | --- | --- |
+| Firefox | `firefox` | Playwright's own build | Playwright ships a patched Firefox; your normal Firefox install is not used. |
+| Brave | `chromium` | detected path | `launchOptions.executablePath` is filled automatically. |
+| Opera | `chromium` | detected path | Same, including Opera GX. |
+| Google Chrome | `chromium` | detected path | Same. |
+| Chromium | `chromium` | detected path | Same. |
 
-Solo necesitas el puerto de depuración cuando quieres que MCP se conecte a una instancia que tú iniciaste previamente:
+---
+
+## ⚙️ Firefox vs Chromium and CDP
+
+There are two different ways to work with a browser, and they must not be mixed up.
+
+### 1. Playwright launches the browser (default)
+
+This is the mode configured by the installers.
+
+- **Firefox** uses `browserName: "firefox"`. Playwright downloads and drives its own Firefox build, which speaks its automation protocol; it does **not** attach to your regular Firefox.
+- **Brave, Opera, Chrome and Chromium** use `browserName: "chromium"` plus `launchOptions.executablePath` pointing at the detected binary.
+- **You do not need `--remote-debugging-port=9222`** here: Playwright starts and manages the browser itself.
+
+### 2. Attaching to a Chromium you started yourself (optional CDP)
+
+You only need the debugging port when you want MCP to connect to an instance you launched:
 
 ```bash
 mkdir -p "$HOME/.cache/omnibrowser/brave-cdp-profile"
@@ -285,7 +428,7 @@ brave --remote-debugging-port=9222 \
   --user-data-dir="$HOME/.cache/omnibrowser/brave-cdp-profile"
 ```
 
-Para Opera, Chrome o Chromium sustituye `brave` por el ejecutable correspondiente. Después utiliza una configuración con `cdpEndpoint`:
+Replace `brave` with `opera`, `google-chrome` or `chromium` as needed, then use a config with `cdpEndpoint`:
 
 ```json
 {
@@ -297,54 +440,76 @@ Para Opera, Chrome o Chromium sustituye `brave` por el ejecutable correspondient
 }
 ```
 
-Las rutas de `initScript` son relativas al **directorio donde vive el archivo de configuración**, por eso el ejemplo lleva `ghost-cursor.js` sin `../` (el fichero `configs/mcp-chromium-cdp.example.json` usa `../ghost-cursor.js` porque está dentro de `configs/`). Hay un ejemplo en `configs/mcp-chromium-cdp.example.json`. Usa un perfil separado para esta sesión; no expongas el puerto de depuración a redes no confiables.
+A ready-made example lives in `configs/mcp-chromium-cdp.example.json`. Use a separate profile for this session and never expose the debugging port to untrusted networks.
 
-**Firefox no usa este endpoint CDP de Chromium.** Para Firefox, utiliza el modo de lanzamiento gestionado por Playwright.
+**Firefox cannot use Chromium's CDP endpoint.** For Firefox, use Playwright's managed launch mode.
 
 ---
 
-## 🔧 Solución de problemas
+## 🔧 Troubleshooting
 
-**El puerto CDP está ocupado (9222 en uso)**
-Otra instancia de Chrome/Chromium ya lo usa. Ciérrala o cambia de puerto:
+**The MCP server does not appear in OpenCode / Claude**
+Restart the client and check `/mcps` (OpenCode) or the tools icon (Claude Desktop). Make sure `npx` works in the same user session: `npx --version`.
 
-```bash
-ss -ltnp | grep 9222          # Linux: quién lo ocupa
-chrome --remote-debugging-port=9223   # usa otro puerto
+**"Chromium distribution 'chrome' is not found"**
+The server started without the `--config` argument. In OpenCode, every argument must be inside the `command` array — there is no `args` property:
+
+```json
+"command": ["npx", "-y", "@playwright/mcp@latest", "--config", "/absolute/path/mcp-chrome-config.json"]
 ```
 
-Y apunta `cdpEndpoint` a ese nuevo puerto.
+**The browser is not detected**
+Check that the executable is in `PATH` (`command -v firefox` on Linux, `$env:PATH` on Windows). On Windows also check the standard locations listed in [Windows requirements](#windows-requirements).
 
-**No detecta el navegador**
-Comprueba que el ejecutable esté en `PATH` con `command -v firefox` (Linux) o `$env:PATH` (Windows). En Windows, revisa las rutas de la tabla de requisitos.
+**Wrong binary path in the config**
+Open `~/.config/opencode/omnibrowser/mcp-<browser>-config.json` and check `launchOptions.executablePath`. Re-running the installer regenerates the file with the correct path.
 
-**Error de rutas de binarios en Chromium**
-Verifica la ruta escrita dentro de `~/.config/opencode/omnibrowser/mcp-<navegador>-config.json` y que el ejecutable exista. Vuelve a ejecutar el instalador para que la regenere.
+**The ghost cursor does not appear**
+1. Confirm the config contains `"initScript": ["ghost-cursor.js"]`.
+2. Confirm `ghost-cursor.js` exists **next to the config file** (same directory).
+3. Restart the MCP server (in OpenCode: `/mcps` → reconnect).
+4. If you deleted the script but left `initScript` in place, Playwright fails to create the browser context and **every** browser tool stops working. Remove the `initScript` key first, then delete the file.
 
-**No aparece el MCP en OpenCode o Claude**
-Reinicia el cliente y revisa `/mcps` (OpenCode) o el icono de MCP (Claude Desktop). Confirma que `npx` funcione desde la misma sesión de usuario.
+**The ghost cursor does not move**
+The agent must call `window.__omnibrowserCursor(x, y)` through the MCP evaluation tool before acting. Check the agent's tool log for a `browser_evaluate` call.
 
-**Claude en Windows no arranca el servidor**
-Claude Desktop a veces no encuentra `npx`. Sustituye `"command": "npx"` por `"command": "cmd"` y añade `"/c", "npx"` al inicio de `args`.
+**The cursor is above a modal / always on top**
+That is intentional: `z-index: 2147483647` is the maximum value so the pointer is never hidden by a dialog.
 
-**Error de Node**
-Instala Node.js 20 o superior. En Windows: `winget install OpenJS.NodeJS.LTS`.
+**CDP port 9222 is already in use**
+Another Chrome/Chromium instance holds it. Close it or pick another port:
 
-**Error al iniciar Firefox**
-Playwright necesita descargar su navegador la primera vez: revisa que haya conexión a Internet. También puedes instalarlo a mano:
+```bash
+ss -ltnp | grep 9222              # Linux: who is using it
+google-chrome --remote-debugging-port=9223
+```
+
+Then point `cdpEndpoint` to the new port.
+
+**Node version errors**
+Playwright MCP needs Node 20 or newer. Check with `node --version`; on Windows install with `winget install OpenJS.NodeJS.LTS`.
+
+**Firefox fails to start the first time**
+Playwright downloads its browser build on demand — check your internet connection, or install it manually:
 
 ```bash
 npx playwright install firefox
 ```
 
-**PowerShell bloquea install.ps1 (Windows)**
-Ejecuta `pwsh -ExecutionPolicy Bypass -File .\install.ps1`. Si te dice que requiere PowerShell 7, instálalo con `winget install Microsoft.PowerShell` y repite el comando con `pwsh`.
+**PowerShell blocks install.ps1 (Windows)**
+Run `pwsh -ExecutionPolicy Bypass -File .\install.ps1`. If it says PowerShell 7 is required, install it with `winget install Microsoft.PowerShell`.
 
-**Configuración JSON inválida**
-Ambos instaladores se detienen sin sobrescribir el archivo. Corrígelo manualmente y vuelve a ejecutarlos; los respaldos `.bak-<fecha>` quedan junto al archivo original.
+**"This installer requires PowerShell 7" (Windows)**
+`powershell` is Windows PowerShell 5.1; the script needs `pwsh` (PowerShell 7). Install it with `winget install Microsoft.PowerShell` and re-run the command with `pwsh`.
+
+**Invalid JSON in the client configuration**
+Both installers stop without overwriting the file. Fix it manually and run the installer again; the previous version is kept as `config.json.bak-<timestamp>`.
+
+**Claude Desktop cannot start the server on Windows**
+Replace `"command": "npx"` with `"command": "cmd"` and put `"/c", "npx"` at the start of `args`.
 
 ---
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto está distribuido bajo la licencia **GPL-2.0**. Consulta `LICENSE` para más información.
+Distributed under the **GPL-2.0** license. See [`LICENSE`](LICENSE) for details.
