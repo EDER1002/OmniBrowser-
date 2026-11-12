@@ -14,6 +14,7 @@ OmniBrowser facilita la automatización de navegadores en Linux mediante **Playw
 - **Modo múltiple:** `--all` registra todos los navegadores detectados en OpenCode.
 - **Configuración segura:** crea una copia de respaldo de `opencode.json` o `opencode.jsonc` antes de modificarlo y conserva los demás servidores MCP.
 - **OpenCode actual:** registra los servidores dentro de `mcp.servers` y usa el formato `command` con todos sus argumentos.
+- **Resaltado visual:** dibuja un cuadro rojo alrededor de cada elemento donde el agente hace click o escribe, para ver en vivo qué está haciendo.
 
 ## 📂 Estructura del repositorio
 
@@ -27,6 +28,7 @@ OmniBrowser/
 │   ├── mcp-chromium-config.json
 │   └── mcp-chromium-cdp.example.json
 ├── install.sh
+├── firefox-highlight.js  # Cuadro de luz rojo en cada click/campo
 ├── mcp-firefox-config.json  # Plantilla heredada compatible
 ├── opencode.example.json
 ├── logo.png
@@ -106,6 +108,17 @@ Instala también al menos uno de los navegadores compatibles. El instalador solo
 - No elimina ni reemplaza otros servidores MCP ajenos a OmniBrowser.
 
 Si vuelves a ejecutar el instalador, reemplaza únicamente las entradas administradas por OmniBrowser (`omnibrowser-*` y la antigua entrada `firefox-playwright`).
+
+## ✨ Resaltado visual de acciones
+
+Cada configuración generada incluye `initScript: ["firefox-highlight.js"]`. El script se inyecta en todas las páginas y dibuja un **cuadro de luz rojo** de ~1.1 segundos alrededor del elemento donde el agente:
+
+- hace click,
+- enfoca un campo de texto.
+
+Así quien observa la ventana del navegador puede seguir qué está haciendo la IA, sin que se mueva el cursor del sistema ni se bloquee el uso del ratón. El costo es de unos pocos bytes de memoria y no requiere recursos adicionales medibles.
+
+El instalador copia `firefox-highlight.js` a `~/.config/opencode/omnibrowser/` junto a los archivos `mcp-<navegador>-config.json`. Si no quieres el resaltado, elimina la clave `initScript` de la configuración generada.
 
 ## ⚙️ Firefox vs. Chromium: puertos y depuración remota
 

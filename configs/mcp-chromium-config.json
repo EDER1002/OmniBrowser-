@@ -4,6 +4,7 @@
     "launchOptions": {
       "executablePath": "/usr/bin/chromium",
       "headless": false
-    }
+    },
+    "initScript": ["../firefox-highlight.js"]
   }
 }
