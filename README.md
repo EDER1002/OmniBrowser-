@@ -1,0 +1,1 @@
+# opencode-firefox-ide-automation
