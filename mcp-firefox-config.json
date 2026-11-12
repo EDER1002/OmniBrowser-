@@ -1,0 +1,6 @@
+{
+  "browser": {
+    "browserName": "firefox",
+    "headless": false
+  }
+}
