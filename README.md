@@ -46,6 +46,7 @@ Este repositorio contiene la configuración y scripts necesarios para habilitar 
 - **Firefox MCP Server**: Utiliza Playwright con el motor Gecko de Firefox para controlar navegadores web de forma autónoma.
 - **Integración con OpenCode**: El servidor MCP se conecta a OpenCode mediante el comando especificado en `opencode.json`.
 - **VSCodium Runner**: Complementario que permite ejecutar comandos en un entorno VS Code-like.
+- Ejecución robusta (-y y rutas dinámicas): Se incorpora la bandera -y en npx para evitar interrupciones de confirmación y el instalador gestiona dinámicamente las rutas absolutas ($HOME) en Linux.
 
 ## ¿Por qué usar Firefox en lugar de Chromium?
 
