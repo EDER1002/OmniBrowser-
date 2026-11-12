@@ -14,6 +14,7 @@ OmniBrowser facilita la automatización de navegadores en Linux mediante **Playw
 - **Modo múltiple:** `--all` registra todos los navegadores detectados en OpenCode.
 - **Configuración segura:** crea una copia de respaldo de `opencode.json` o `opencode.jsonc` antes de modificarlo y conserva los demás servidores MCP.
 - **OpenCode actual:** registra los servidores dentro de `mcp.servers` y usa el formato `command` con todos sus argumentos.
+- **Cursor fantasma:** inyecta un puntero SVG morado (`#9D00FF`) que el agente mueve para mostrar en tiempo real dónde apunta, sin tocar el cursor físico del usuario.
 
 ## 📂 Estructura del repositorio
 
@@ -27,6 +28,7 @@ OmniBrowser/
 │   ├── mcp-chromium-config.json
 │   └── mcp-chromium-cdp.example.json
 ├── install.sh
+├── ghost-cursor.js  # Cursor fantasma morado controlado por el agente
 ├── mcp-firefox-config.json  # Plantilla heredada compatible
 ├── opencode.example.json
 ├── logo.png
@@ -106,6 +108,40 @@ Instala también al menos uno de los navegadores compatibles. El instalador solo
 - No elimina ni reemplaza otros servidores MCP ajenos a OmniBrowser.
 
 Si vuelves a ejecutar el instalador, reemplaza únicamente las entradas administradas por OmniBrowser (`omnibrowser-*` y la antigua entrada `firefox-playwright`).
+
+## 🖱️ Cursor fantasma morado
+
+Cada configuración generada incluye `initScript: ["ghost-cursor.js"]`. El script se inyecta en todas las páginas **antes** que cualquier otro script y crea un puntero SVG morado (`#9D00FF`) con punta hacia la izquierda y fondo transparente:
+
+```css
+position: fixed;
+z-index: 999999;
+pointer-events: none;
+transition: top 0.1s ease-out, left 0.1s ease-out;
+```
+
+`pointer-events: none` garantiza que el cursor **nunca secuestre ni bloquee** tus clics físicos: es un elemento puramente visual.
+
+### Cómo se mueve (backend → frontend)
+
+No hay servidor web ni puerto extra: la comunicación ocurre por la propia herramienta de evaluación del MCP.
+
+1. **Backend (agente):** decide unas coordenadas `(x, y)` o un elemento de la página.
+2. **Transporte:** llama a `browser_evaluate` con esas coordenadas.
+3. **Frontend (página):** `ghost-cursor.js` expone `window.__omnibrowserCursor(x, y)`, que actualiza las propiedades `left` y `top` del elemento; la transición CSS hace el desplazamiento suave.
+
+```js
+// Mover a coordenadas exactas de viewport
+() => window.__omnibrowserCursor(320, 180)
+
+// Mover al centro de un elemento (por referencia del snapshot)
+(el) => window.__omnibrowserCursor(el)
+
+// Ocultar el cursor
+() => window.__omnibrowserCursor.hide()
+```
+
+El instalador copia `ghost-cursor.js` a `~/.config/opencode/omnibrowser/` junto a los archivos `mcp-<navegador>-config.json`. Si no quieres el cursor, elimina la clave `initScript` de la configuración generada.
 
 ## ⚙️ Firefox vs. Chromium: puertos y depuración remota
 

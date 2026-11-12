@@ -3,6 +3,7 @@
     "browserName": "firefox",
     "launchOptions": {
       "headless": false
-    }
+    },
+    "initScript": ["ghost-cursor.js"]
   }
 }

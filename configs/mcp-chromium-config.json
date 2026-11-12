@@ -4,6 +4,7 @@
     "launchOptions": {
       "executablePath": "/usr/bin/chromium",
       "headless": false
-    }
+    },
+    "initScript": ["../ghost-cursor.js"]
   }
 }
