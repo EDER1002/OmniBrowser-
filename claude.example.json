@@ -1,0 +1,49 @@
+{
+  "mcpServers": {
+    "omnibrowser-firefox": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--config",
+        "/ABSOLUTE/PATH/TO/omnibrowser/mcp-firefox-config.json"
+      ]
+    },
+    "omnibrowser-brave": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--config",
+        "/ABSOLUTE/PATH/TO/omnibrowser/mcp-brave-config.json"
+      ]
+    },
+    "omnibrowser-opera": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--config",
+        "/ABSOLUTE/PATH/TO/omnibrowser/mcp-opera-config.json"
+      ]
+    },
+    "omnibrowser-chrome": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--config",
+        "/ABSOLUTE/PATH/TO/omnibrowser/mcp-chrome-config.json"
+      ]
+    },
+    "omnibrowser-chromium": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--config",
+        "/ABSOLUTE/PATH/TO/omnibrowser/mcp-chromium-config.json"
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "launchOptions": {
+      "executablePath": "C:\\Program Files\\Opera\\opera.exe",
+      "headless": false
+    },
+    "initScript": ["../../ghost-cursor.js"]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "launchOptions": {
+      "executablePath": "C:\\Users\\USUARIO\\AppData\\Local\\Chromium\\Application\\chrome.exe",
+      "headless": false
+    },
+    "initScript": ["../../ghost-cursor.js"]
+  }
+}

@@ -23,12 +23,15 @@ SELECTED_BROWSERS=()
 
 usage() {
   cat <<'HELP'
-OmniBrowser - instalador de MCP para OpenCode
+OmniBrowser - instalador de MCP para OpenCode y Claude
 
 Uso:
   ./install.sh                 Detecta navegadores y muestra un menú si hay varios
   ./install.sh --all           Registra todos los navegadores detectados
   ./install.sh --browser brave Configura un navegador específico
+  ./install.sh --claude        También registra los servidores en Claude
+                               (Claude Desktop si existe; si no, imprime los
+                               comandos para Claude Code)
   ./install.sh --help          Muestra esta ayuda
 
 IDs aceptados: firefox, brave, opera, chrome, chromium
@@ -128,10 +131,15 @@ select_browsers() {
 
 MODE="interactive"
 REQUESTED_BROWSER=""
+CLAUDE="0"
 while (($#)); do
   case "$1" in
     --all)
       MODE="all"
+      shift
+      ;;
+    --claude)
+      CLAUDE="1"
       shift
       ;;
     --browser)
@@ -182,7 +190,7 @@ fi
 detect_browsers
 select_browsers "$MODE" "$REQUESTED_BROWSER"
 
-PY_ARGS=("$CONFIG_DIR" "$OPENCODE_DIR" "$(command -v npx)" "$SCRIPT_DIR/ghost-cursor.js")
+PY_ARGS=("$CONFIG_DIR" "$OPENCODE_DIR" "$(command -v npx)" "$SCRIPT_DIR/ghost-cursor.js" "$CLAUDE")
 for id in "${SELECTED_BROWSERS[@]}"; do
   PY_ARGS+=("${id}=${BROWSER_PATHS[$id]}")
 done
@@ -201,6 +209,7 @@ config_dir = Path(sys.argv[1]).expanduser()
 opencode_dir = Path(sys.argv[2]).expanduser()
 npx_path = sys.argv[3]
 script_source = Path(sys.argv[4]).expanduser()
+claude_enabled = sys.argv[5] == "1"
 selected = []
 
 browser_definitions = {
@@ -211,7 +220,7 @@ browser_definitions = {
     "chromium": {"label": "Chromium", "engine": "chromium"},
 }
 
-for item in sys.argv[5:]:
+for item in sys.argv[6:]:
     if "=" not in item:
         raise SystemExit(f"Argumento interno no válido: {item!r}")
     browser_id, executable = item.split("=", 1)
@@ -346,6 +355,8 @@ for name in list(servers):
     if name.startswith("omnibrowser-") or name == "firefox-playwright":
         del servers[name]
 
+config_paths = {}
+
 for browser_id, executable in selected:
     definition = browser_definitions[browser_id]
     config_path = config_dir / f"mcp-{browser_id}-config.json"
@@ -367,6 +378,7 @@ for browser_id, executable in selected:
         json.dumps(browser_config, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
+    config_paths[browser_id] = config_path
 
     server_name = f"omnibrowser-{browser_id}"
     servers[server_name] = {
@@ -398,6 +410,58 @@ except Exception:
         pass
     raise
 
+# Optional Claude registration. Claude Desktop is merged when its config
+# exists; otherwise only the Claude Code commands are printed.
+if claude_enabled:
+    claude_file = Path.home() / ".config" / "Claude" / "claude_desktop_config.json"
+    if claude_file.exists():
+        try:
+            claude_config = json.loads(strip_jsonc(claude_file.read_text(encoding="utf-8")))
+        except Exception as exc:
+            raise SystemExit(
+                f"No se pudo interpretar {claude_file}: {exc}\n"
+                "No se modificó el archivo de Claude."
+            )
+        if not isinstance(claude_config, dict):
+            raise SystemExit("La raíz de claude_desktop_config.json debe ser un objeto JSON.")
+
+        stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        backup = claude_file.with_name(f"{claude_file.name}.bak-{stamp}")
+        shutil.copy2(claude_file, backup)
+        print(f"Respaldo creado: {backup}")
+
+        mcp_servers = claude_config.setdefault("mcpServers", {})
+        if not isinstance(mcp_servers, dict):
+            raise SystemExit("La propiedad 'mcpServers' no es un objeto; no se modificó Claude.")
+
+        # Replace only OmniBrowser's own entries, preserving other servers.
+        for name in list(mcp_servers):
+            if name.startswith("omnibrowser-") or name == "firefox-playwright":
+                del mcp_servers[name]
+
+        for browser_id, _executable in selected:
+            mcp_servers[f"omnibrowser-{browser_id}"] = {
+                "command": npx_path,
+                "args": ["-y", "@playwright/mcp@latest", "--config", str(config_paths[browser_id])],
+            }
+
+        # Escritura atómica: un fallo a mitad no deja el archivo truncado.
+        fd, temp_name = tempfile.mkstemp(prefix=claude_file.name, dir=str(claude_file.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(claude_config, handle, indent=2, ensure_ascii=False)
+                handle.write("\n")
+            os.replace(temp_name, claude_file)
+        except Exception:
+            try:
+                os.unlink(temp_name)
+            except OSError:
+                pass
+            raise
+        print(f"Claude Desktop: {claude_file}")
+    else:
+        print(f"\nNo se encontró Claude Desktop ({claude_file}); no se modificó ningún archivo de Claude.")
+
 print("\nOmniBrowser quedó configurado correctamente.")
 print(f"Configuración MCP: {config_dir}")
 print(f"OpenCode: {opencode_file}")
@@ -405,6 +469,14 @@ for browser_id, executable in selected:
     print(f"  - {browser_definitions[browser_id]['label']}: omnibrowser-{browser_id}")
     if browser_id != "firefox":
         print(f"    Ejecutable: {executable}")
+
+if claude_enabled:
+    print("\nPara Claude Code, registra el servidor con (por navegador):")
+    for browser_id, _executable in selected:
+        print(
+            f'  claude mcp add omnibrowser-{browser_id} -- npx -y @playwright/mcp@latest '
+            f'--config "{config_paths[browser_id]}"'
+        )
 PY
 
 printf '\nListo. Reinicia OpenCode y verifica los servidores con /mcps.\n'
